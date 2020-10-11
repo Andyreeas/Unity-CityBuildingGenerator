@@ -4,11 +4,12 @@ using UnityEngine;
 
 public class Floor {
 
-    public int amountFloors { get; private set; }
+    public int FloorLevel { get; private set; }
+
     public Room[,] rooms;
 
     public Floor(int floor, Room[,] room) {
-        amountFloors = floor;
+        FloorLevel = floor;
         rooms = room;
     }
 

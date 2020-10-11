@@ -4,10 +4,17 @@ using UnityEngine;
 
 public class Room {
 
-    public Vector2 roomPosition { get; private set; }
+    public Vector3 RoomPosition { get; private set; }
 
-    public Room(Vector2 position) {
-        roomPosition = position;
+    public Wall[] walls;
+    public int floorLevel;
+
+    public bool HasRoof { get; private set; }
+
+    public Room(Vector3 position, int floor, bool roof) {
+        RoomPosition = position;
+        floorLevel = floor;
+        HasRoof = roof;
     }
 
 }

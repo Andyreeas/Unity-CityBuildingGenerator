@@ -1,19 +1,38 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
 
 public class BuildingGenerator : MonoBehaviour {
 
     //Prefabs
     public Transform wallPrefab;
+    public Transform doorPrefab;
+    public Transform windowPrefab;
     public Transform floorPrefab;
     public Transform roofPrefab;
 
-    //Buildings settings
     [Header("Amount of Rooms / Floors")]
     public Building building;
-    public int amountFloors;
+
+    //Buildings settings
+    [System.Serializable]
+    public class Building {
+        [Range(1, 20)]
+        public int rows;
+        [Range(1, 20)]
+        public int columns;
+
+        public int amountFloors;
+
+        [Range(0,1)]
+        public float windowsPercentChance;
+        [Range(0, 1)]
+        public float doorPercentChance;
+
+        public bool hasWall;
+        public bool hasFloor;
+        public bool hasRoof;
+    }
 
     [Header("Room size")]
     //x
@@ -22,6 +41,8 @@ public class BuildingGenerator : MonoBehaviour {
     public float height;
     //z
     public float length;
+
+    bool getsRoof = false;
 
     Floor[] floors;
     Room[,] rooms;
@@ -33,15 +54,26 @@ public class BuildingGenerator : MonoBehaviour {
 
     //Create Logic for a Building
     void Generator() {
-        rooms = new Room[building.x, building.z];
-        floors = new Floor[amountFloors];
-
+        floors = new Floor[building.amountFloors];
         int floorCount = 0;
 
         foreach (Floor floor in floors) {
-            for (int i = 0; i < building.x; i++) {
-                for (int j = 0; j < building.z; j++) {
-                    rooms[i, j] = new Room(new Vector2(i * width, j * length));
+            rooms = new Room[building.rows, building.columns];
+            for (int i = 0; i < building.rows; i++) {
+                for (int j = 0; j < building.columns; j++) {
+                    if (floorCount == building.amountFloors - 1) {
+                        getsRoof = true;
+                    } else {
+                        getsRoof = false;
+                    }
+                    rooms[i, j] = new Room(new Vector3(i * width, floorCount, j * length), floorCount, getsRoof);
+                    Room room = rooms[i, j];
+                    room.walls = new Wall[4];
+
+                    room.walls[0] = new Wall(new Vector3(room.RoomPosition.x + width / 2 + wallPrefab.localScale.z / 2, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z), Quaternion.Euler(0, 90, 0));
+                    room.walls[1] = new Wall(new Vector3(room.RoomPosition.x - width / 2 - wallPrefab.localScale.z / 2, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z), Quaternion.Euler(0, -90, 0));
+                    room.walls[2] = new Wall(new Vector3(room.RoomPosition.x, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z + length / 2 + wallPrefab.localScale.z / 2), Quaternion.Euler(0, 0, 0));
+                    room.walls[3] = new Wall(new Vector3(room.RoomPosition.x, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z - length / 2 - wallPrefab.localScale.z / 2), Quaternion.Euler(0, 180, 0));
                 }
             }
             floors[floorCount] = new Floor(floorCount++, rooms);
@@ -57,51 +89,80 @@ public class BuildingGenerator : MonoBehaviour {
         }
         Transform buildingHolder = new GameObject(buildingHolderName).transform;
 
-        foreach (Floor floor in floors) {
-            string floorName = "Floor" + floor.amountFloors;
+        foreach(Floor floor in floors) {
+            string floorName = "Floor" + floor.FloorLevel;
             Transform floorHolder = new GameObject(floorName).transform;
             floorHolder.parent = buildingHolder;
-            for (int i = 0; i < building.x; i++) {
-                for (int j = 0; j < building.z; j++) {
+            floorHolder.position = new Vector3(building.rows * width / 2f - (width / 2), floor.FloorLevel * height, building.columns * length / 2f - (length / 2));
+
+            for (int i = 0; i < building.rows; i++) {
+                for (int j = 0; j < building.columns; j++) {
                     //Create parent object for the room and a room Name
                     string roomName = "Room-" + i + j;
                     Transform roomHolder = new GameObject(roomName).transform;
                     roomHolder.parent = floorHolder;
 
-                    Room room = rooms[i, j];
-                    Transform ground = Instantiate(floorPrefab, new Vector3(room.roomPosition.x, floor.amountFloors * height + floorPrefab.localScale.y / 2f, room.roomPosition.y), Quaternion.Euler(0, 0, 0));
-                    ground.localScale = new Vector3(width, floorPrefab.localScale.y, length);
-                    ground.parent = roomHolder;
+                    Room room = floor.rooms[i, j];
 
-                    Transform wall01 = Instantiate(wallPrefab, new Vector3(room.roomPosition.x + width / 2 + wallPrefab.localScale.z / 2, floor.amountFloors * height + wallPrefab.localScale.y * height / 2, room.roomPosition.y), Quaternion.Euler(0, 90, 0), roomHolder);
-                    wall01.localScale = new Vector3(wall01.localScale.x * length + wallPrefab.localScale.z * 2, wall01.localScale.y * height, wallPrefab.localScale.z);
+                    roomHolder.position = new Vector3(room.RoomPosition.x, floor.FloorLevel * height + floorPrefab.localScale.y / 2f, room.RoomPosition.z);
 
-                    Transform wall02 = Instantiate(wallPrefab, new Vector3(room.roomPosition.x - width / 2 - wallPrefab.localScale.z / 2, floor.amountFloors * height + wallPrefab.localScale.y * height / 2, room.roomPosition.y), Quaternion.Euler(0, 90, 0), roomHolder);
-                    wall02.localScale = new Vector3(wall02.localScale.x * length + wallPrefab.localScale.z * 2, wall02.localScale.y * height, wallPrefab.localScale.z);
-
-                    Transform wall03 = Instantiate(wallPrefab, new Vector3(room.roomPosition.x, floor.amountFloors * height + wallPrefab.localScale.y * height / 2, room.roomPosition.y + length / 2 + wallPrefab.localScale.z / 2), Quaternion.Euler(0, 0, 0), roomHolder);
-                    wall03.localScale = new Vector3(wall03.localScale.x * width, wall03.localScale.y * height, wallPrefab.localScale.z);
-
-                    Transform wall04 = Instantiate(wallPrefab, new Vector3(room.roomPosition.x, floor.amountFloors * height + wallPrefab.localScale.y * height / 2, room.roomPosition.y - length / 2 - wallPrefab.localScale.z / 2), Quaternion.Euler(0, 0, 0), roomHolder);
-                    wall04.localScale = new Vector3(wall04.localScale.x * width, wall04.localScale.y * height, wallPrefab.localScale.z);
-
-                    if (building.hasRoof && floor.amountFloors == floors.Length - 1){
-                        Transform roof = Instantiate(roofPrefab, new Vector3(room.roomPosition.x, floor.amountFloors * height + wall01.localScale.y, room.roomPosition.y), Quaternion.Euler(0, 0, 0));
-                        roof.localScale = new Vector3(roof.localScale.x * width, roof.localScale.y, roof.localScale.z * length);
-                        roof.parent = roomHolder;
-                    }
+                    PlaceFloor(room, floor, roomHolder);
+                    PlaceWalls(building, room, floor, roomHolder);
+                    PlaceRoof(room, floor, roomHolder);
                 }
             }
         }
     }
-    
-    [System.Serializable]
-    public class Building {
-        public int x;
-        public int z;
 
-        public bool hasRoof;
-
+    void PlaceFloor(Room room, Floor floor, Transform roomHolder) {
+        if (building.hasFloor) {
+            Vector3 groundPosition = new Vector3(room.RoomPosition.x, floor.FloorLevel * height + floorPrefab.localScale.y / 2f, room.RoomPosition.z);
+            Transform ground = Instantiate(floorPrefab, groundPosition, Quaternion.Euler(0, 0, 0));
+            ground.localScale = new Vector3(width, floorPrefab.localScale.y, length);
+            ground.parent = roomHolder;
+        }
     }
 
+    void PlaceWalls(Building building, Room room, Floor floor, Transform roomHolder) {
+        if (building.hasWall) {
+            for (int i = 0; i < room.walls.Length; i++) {
+                if (room.floorLevel == 0) {
+                    InstantiateWall(room, Random.Range(0f, 1f) <= building.doorPercentChance ? doorPrefab : wallPrefab, roomHolder, i);
+                } else if (room.floorLevel >= 1) {
+                    InstantiateWall(room, Random.Range(0f, 1f) <= building.windowsPercentChance ? windowPrefab : wallPrefab, roomHolder, i);
+                }
+            }
+        }
+    }
+
+    void InstantiateWall(Room room, Transform prefab, Transform roomHolder, int index) {
+        Transform wall = Instantiate(prefab, room.walls[index].WallPosition, room.walls[index].WallRotation, roomHolder);
+        SetlocalSacleWall(wall, index);
+    }
+
+    void SetlocalSacleWall(Transform wall, int index) {
+        switch (index) {
+            case 0:
+                wall.localScale = new Vector3(wall.localScale.x * length + wallPrefab.localScale.z * 2, wall.localScale.y * height, wallPrefab.localScale.z);
+                break;
+            case 1:
+                wall.localScale = new Vector3(wall.localScale.x * length + wallPrefab.localScale.z * 2, wall.localScale.y * height, wallPrefab.localScale.z);
+                break;
+            case 2:
+                wall.localScale = new Vector3(wall.localScale.x * width, wall.localScale.y * height, wallPrefab.localScale.z);
+                break;
+            case 3:
+                wall.localScale = new Vector3(wall.localScale.x * width, wall.localScale.y * height, wallPrefab.localScale.z);
+                break;
+        }
+    }
+
+    void PlaceRoof(Room room, Floor floor, Transform roomHolder) {
+        if (building.hasRoof && room.HasRoof) {
+            Vector3 roofPosition = new Vector3(room.RoomPosition.x, wallPrefab.localScale.y * height * (floor.FloorLevel + 1) + roofPrefab.localScale.y / 2, room.RoomPosition.z);
+            Transform roof = Instantiate(roofPrefab, roofPosition, Quaternion.Euler(0, 0, 0));
+            roof.localScale = new Vector3(roof.localScale.x * width + wallPrefab.localScale.z * 2, roof.localScale.y, roof.localScale.z * length + wallPrefab.localScale.z * 2);
+            roof.parent = roomHolder;
+        }
+    }
 }
