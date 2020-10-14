@@ -12,10 +12,11 @@ public class BuildingEditor : Editor {
         if (DrawDefaultInspector()) {
             building.GenerateBuilding();
         }
-        if (GUILayout.Button("Generate Building")) {
+        if (GUILayout.Button("Generate building")) {
             building.GenerateBuilding();
         }
-
+        if (GUILayout.Button("Generate randomized building")) {
+            building.generateRandomizedBuilding();
+        }
     }
-
 }

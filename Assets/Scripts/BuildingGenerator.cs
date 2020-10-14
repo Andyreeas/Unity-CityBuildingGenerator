@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditorInternal;
 using UnityEngine;
 
 public class BuildingGenerator : MonoBehaviour {
@@ -11,10 +12,11 @@ public class BuildingGenerator : MonoBehaviour {
     public Transform floorPrefab;
     public Transform roofPrefab;
 
-    [Header("Amount of Rooms / Floors")]
+    //Buildings settings
+    [Header("Building settings")]
+    [SerializeField]
     public Building building;
 
-    //Buildings settings
     [System.Serializable]
     public class Building {
         [Range(1, 20)]
@@ -24,7 +26,7 @@ public class BuildingGenerator : MonoBehaviour {
 
         public int amountFloors;
 
-        [Range(0,1)]
+        [Range(0, 1)]
         public float windowsPercentChance;
         [Range(0, 1)]
         public float doorPercentChance;
@@ -32,6 +34,8 @@ public class BuildingGenerator : MonoBehaviour {
         public bool hasWall;
         public bool hasFloor;
         public bool hasRoof;
+
+        public bool hasInsideWalls;
     }
 
     [Header("Room size")]
@@ -44,12 +48,35 @@ public class BuildingGenerator : MonoBehaviour {
 
     bool getsRoof = false;
 
+
     Floor[] floors;
     Room[,] rooms;
 
     public void GenerateBuilding() {
         Generator();
+        RemoveInsideWalls();
         Renderer();
+    }
+
+    public void generateRandomizedBuilding() {
+        
+        building.rows = Random.Range(1, 10);
+        building.columns = Random.Range(1, 10);
+        building.amountFloors = Random.Range(1, 6);
+        building.windowsPercentChance = Random.Range(0.3f, 1.0f);
+        building.doorPercentChance = Random.Range(0.1f, 1.0f);
+
+        building.hasWall = true;
+        building.hasFloor = true;
+        building.hasRoof = true;
+        building.hasInsideWalls = false;
+
+        width = 2f;
+        height = 1f;
+        length = 2f;
+
+        GenerateBuilding();
+
     }
 
     //Create Logic for a Building
@@ -68,19 +95,23 @@ public class BuildingGenerator : MonoBehaviour {
                     }
                     rooms[i, j] = new Room(new Vector3(i * width, floorCount, j * length), floorCount, getsRoof);
                     Room room = rooms[i, j];
+
                     room.walls = new Wall[4];
 
-                    room.walls[0] = new Wall(new Vector3(room.RoomPosition.x + width / 2 + wallPrefab.localScale.z / 2, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z), Quaternion.Euler(0, 90, 0));
-                    room.walls[1] = new Wall(new Vector3(room.RoomPosition.x - width / 2 - wallPrefab.localScale.z / 2, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z), Quaternion.Euler(0, -90, 0));
-                    room.walls[2] = new Wall(new Vector3(room.RoomPosition.x, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z + length / 2 + wallPrefab.localScale.z / 2), Quaternion.Euler(0, 0, 0));
-                    room.walls[3] = new Wall(new Vector3(room.RoomPosition.x, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z - length / 2 - wallPrefab.localScale.z / 2), Quaternion.Euler(0, 180, 0));
+                    room.walls[0] = new Wall(new Vector3(room.RoomPosition.x + width / 2 + wallPrefab.localScale.z / 2, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z), Quaternion.Euler(0, 90, 0), Wall.WallOrientation.East);
+                    room.walls[1] = new Wall(new Vector3(room.RoomPosition.x - width / 2 - wallPrefab.localScale.z / 2, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z), Quaternion.Euler(0, -90, 0), Wall.WallOrientation.West);
+                    room.walls[2] = new Wall(new Vector3(room.RoomPosition.x, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z + length / 2 + wallPrefab.localScale.z / 2), Quaternion.Euler(0, 0, 0), Wall.WallOrientation.North);
+                    room.walls[3] = new Wall(new Vector3(room.RoomPosition.x, floorCount * height + wallPrefab.localScale.y * height / 2, room.RoomPosition.z - length / 2 - wallPrefab.localScale.z / 2), Quaternion.Euler(0, 180, 0), Wall.WallOrientation.South);
                 }
             }
             floors[floorCount] = new Floor(floorCount++, rooms);
         }
     }
 
-    //Create the Building with the logic
+    /*
+     * Creates the building with the logic from the generator
+     * 
+     */
     void Renderer() {
         //Parent object if already exists it gets destroyed
         string buildingHolderName = "Building";
@@ -107,7 +138,7 @@ public class BuildingGenerator : MonoBehaviour {
                     roomHolder.position = new Vector3(room.RoomPosition.x, floor.FloorLevel * height + floorPrefab.localScale.y / 2f, room.RoomPosition.z);
 
                     PlaceFloor(room, floor, roomHolder);
-                    PlaceWalls(building, room, floor, roomHolder);
+                    PlaceWalls(room, floor, roomHolder);
                     PlaceRoof(room, floor, roomHolder);
                 }
             }
@@ -123,13 +154,25 @@ public class BuildingGenerator : MonoBehaviour {
         }
     }
 
-    void PlaceWalls(Building building, Room room, Floor floor, Transform roomHolder) {
+    void PlaceWalls(Room room, Floor floor, Transform roomHolder) {
         if (building.hasWall) {
             for (int i = 0; i < room.walls.Length; i++) {
-                if (room.floorLevel == 0) {
-                    InstantiateWall(room, Random.Range(0f, 1f) <= building.doorPercentChance ? doorPrefab : wallPrefab, roomHolder, i);
-                } else if (room.floorLevel >= 1) {
-                    InstantiateWall(room, Random.Range(0f, 1f) <= building.windowsPercentChance ? windowPrefab : wallPrefab, roomHolder, i);
+                if (room.floorLevel == 0 && room.walls[i].active) {
+                    if (Random.Range(0f, 1f) <= building.doorPercentChance) {
+                        InstantiateWall(room, doorPrefab, roomHolder, i);
+                        // Setting the WallType of the wall to SimpleDoor it is SimpleWall by default
+                        room.walls[i].SetTypeOfWall(Wall.WallType.SimpleDoor);
+                    } else {
+                        InstantiateWall(room, wallPrefab, roomHolder, i);
+                    }
+                } else if (room.floorLevel >= 1 && room.walls[i].active) {
+                    if (Random.Range(0f, 1f) <= building.windowsPercentChance) {
+                        InstantiateWall(room, windowPrefab, roomHolder, i);
+                        // Setting the WallType of the wall to SimpleDoor it is SimpleWall by default
+                        room.walls[i].SetTypeOfWall(Wall.WallType.SimpleWindowBig);
+                    } else {
+                        InstantiateWall(room, wallPrefab, roomHolder, i);
+                    }
                 }
             }
         }
@@ -141,19 +184,10 @@ public class BuildingGenerator : MonoBehaviour {
     }
 
     void SetlocalSacleWall(Transform wall, int index) {
-        switch (index) {
-            case 0:
-                wall.localScale = new Vector3(wall.localScale.x * length + wallPrefab.localScale.z * 2, wall.localScale.y * height, wallPrefab.localScale.z);
-                break;
-            case 1:
-                wall.localScale = new Vector3(wall.localScale.x * length + wallPrefab.localScale.z * 2, wall.localScale.y * height, wallPrefab.localScale.z);
-                break;
-            case 2:
-                wall.localScale = new Vector3(wall.localScale.x * width, wall.localScale.y * height, wallPrefab.localScale.z);
-                break;
-            case 3:
-                wall.localScale = new Vector3(wall.localScale.x * width, wall.localScale.y * height, wallPrefab.localScale.z);
-                break;
+        if (index == 0 || index == 1) {
+            wall.localScale = new Vector3(wall.localScale.x * length + wallPrefab.localScale.z * 2, wall.localScale.y * height, wallPrefab.localScale.z);
+        } else if (index == 2 || index == 3) {
+            wall.localScale = new Vector3(wall.localScale.x * width, wall.localScale.y * height, wallPrefab.localScale.z);
         }
     }
 
@@ -164,5 +198,95 @@ public class BuildingGenerator : MonoBehaviour {
             roof.localScale = new Vector3(roof.localScale.x * width + wallPrefab.localScale.z * 2, roof.localScale.y, roof.localScale.z * length + wallPrefab.localScale.z * 2);
             roof.parent = roomHolder;
         }
+    }
+
+    void RemoveInsideWalls() {
+        foreach (Floor floor in floors) {
+            if (!building.hasInsideWalls && !(building.rows == 1) && !(building.columns == 1)) {
+                for (int i = 0; i < building.rows; i++) {
+                    for (int j = 0; j < building.columns; j++) {
+                        if(i == 0) {
+                            if (j == 0) {
+                                floor.rooms[i, j].walls[0].SetWallActive(false);
+                                floor.rooms[i, j].walls[2].SetWallActive(false);
+                            } else if (j > 0) {
+                                if (j < building.columns - 1) {
+                                    floor.rooms[i, j].walls[0].SetWallActive(false);
+                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                } else if (j == building.columns - 1) {
+                                    floor.rooms[i, j].walls[0].SetWallActive(false);
+                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                }
+                            }
+                        } else if (i > 0 && i < building.rows - 1) {
+                            if (j == 0) {
+                                if (i < building.rows - 1) {
+                                    floor.rooms[i, j].walls[0].SetWallActive(false);
+                                    floor.rooms[i, j].walls[1].SetWallActive(false);
+                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                } else if (i == building.rows - 1) {
+                                    floor.rooms[i, j].walls[1].SetWallActive(false);
+                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                }
+                            } else if (j > 0) {
+                                if (i < building.rows - 1 && j < building.columns - 1) {
+                                    floor.rooms[i, j].walls[0].SetWallActive(false);
+                                    floor.rooms[i, j].walls[1].SetWallActive(false);
+                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                } else if (j == building.columns - 1 && i < building.rows - 1) {
+                                    floor.rooms[i, j].walls[0].SetWallActive(false);
+                                    floor.rooms[i, j].walls[1].SetWallActive(false);
+                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                }
+                            }
+                        } else if (i == building.rows - 1) {
+                            if(j == 0) {
+                                floor.rooms[i, j].walls[1].SetWallActive(false);
+                                floor.rooms[i, j].walls[2].SetWallActive(false);
+                            }
+                            if (j > 0) {
+                                if (j < building.columns - 1) {
+                                    floor.rooms[i, j].walls[1].SetWallActive(false);
+                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                } else if (j == building.columns - 1) {
+                                    floor.rooms[i, j].walls[1].SetWallActive(false);
+                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (building.rows == 1 && building.columns > 1) {
+                for (int j = 0; j < building.columns; j++) {
+                    if (j < building.columns - 1) {
+                        floor.rooms[0, j].walls[2].SetWallActive(false);
+                        if (j > 0) {
+                            floor.rooms[0, j].walls[2].SetWallActive(false);
+                            floor.rooms[0, j].walls[3].SetWallActive(false);
+                        }
+                    }
+                    if (j == building.columns - 1) {
+                        floor.rooms[0, j].walls[3].SetWallActive(false);
+                    }
+
+                }
+            } else if (building.rows > 1 && building.columns == 1) {
+                for (int i = 0; i < building.rows; i++) {
+                    if (i < building.rows - 1) {
+                        floor.rooms[i, 0].walls[0].SetWallActive(false);
+                        if (i > 0) {
+                            floor.rooms[i, 0].walls[0].SetWallActive(false);
+                            floor.rooms[i, 0].walls[1].SetWallActive(false);
+                        }
+                    }
+                    if (i == building.rows - 1) {
+                        floor.rooms[i, 0].walls[1].SetWallActive(false);
+                    }
+                }
+            }
+        } 
     }
 }
