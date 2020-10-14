@@ -36,6 +36,11 @@ public class BuildingGenerator : MonoBehaviour {
         public bool hasRoof;
 
         public bool hasInsideWalls;
+
+        [HideInInspector]
+        public float buildingSizex;
+        [HideInInspector]
+        public float buildingSizey;
     }
 
     [Header("Room size")]
@@ -56,6 +61,7 @@ public class BuildingGenerator : MonoBehaviour {
         Generator();
         RemoveInsideWalls();
         Renderer();
+        SetBuildingSize();
     }
 
     public void generateRandomizedBuilding() {
@@ -200,6 +206,11 @@ public class BuildingGenerator : MonoBehaviour {
         }
     }
 
+    void SetBuildingSize() {
+        building.buildingSizex = building.rows * width;
+        building.buildingSizey = building.columns * length;
+    }
+
     void RemoveInsideWalls() {
         foreach (Floor floor in floors) {
             if (!building.hasInsideWalls && !(building.rows == 1) && !(building.columns == 1)) {
@@ -207,86 +218,97 @@ public class BuildingGenerator : MonoBehaviour {
                     for (int j = 0; j < building.columns; j++) {
                         if(i == 0) {
                             if (j == 0) {
-                                floor.rooms[i, j].walls[0].SetWallActive(false);
-                                floor.rooms[i, j].walls[2].SetWallActive(false);
+                                SetWallInactive(floor, i, j, 0, 2);
                             } else if (j > 0) {
                                 if (j < building.columns - 1) {
-                                    floor.rooms[i, j].walls[0].SetWallActive(false);
-                                    floor.rooms[i, j].walls[2].SetWallActive(false);
-                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 0, 2, 3);
                                 } else if (j == building.columns - 1) {
-                                    floor.rooms[i, j].walls[0].SetWallActive(false);
-                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 0, 3);
                                 }
                             }
                         } else if (i > 0 && i < building.rows - 1) {
                             if (j == 0) {
                                 if (i < building.rows - 1) {
-                                    floor.rooms[i, j].walls[0].SetWallActive(false);
-                                    floor.rooms[i, j].walls[1].SetWallActive(false);
-                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 0, 1, 2);
                                 } else if (i == building.rows - 1) {
-                                    floor.rooms[i, j].walls[1].SetWallActive(false);
-                                    floor.rooms[i, j].walls[2].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 1, 2);
                                 }
                             } else if (j > 0) {
                                 if (i < building.rows - 1 && j < building.columns - 1) {
-                                    floor.rooms[i, j].walls[0].SetWallActive(false);
-                                    floor.rooms[i, j].walls[1].SetWallActive(false);
-                                    floor.rooms[i, j].walls[2].SetWallActive(false);
-                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 0, 1, 2, 3);
                                 } else if (j == building.columns - 1 && i < building.rows - 1) {
-                                    floor.rooms[i, j].walls[0].SetWallActive(false);
-                                    floor.rooms[i, j].walls[1].SetWallActive(false);
-                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 0, 1, 3);
                                 }
                             }
                         } else if (i == building.rows - 1) {
                             if(j == 0) {
-                                floor.rooms[i, j].walls[1].SetWallActive(false);
-                                floor.rooms[i, j].walls[2].SetWallActive(false);
+                                SetWallInactive(floor, i, j, 1, 2);
                             }
                             if (j > 0) {
                                 if (j < building.columns - 1) {
-                                    floor.rooms[i, j].walls[1].SetWallActive(false);
-                                    floor.rooms[i, j].walls[2].SetWallActive(false);
-                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 1, 2, 3);
                                 } else if (j == building.columns - 1) {
-                                    floor.rooms[i, j].walls[1].SetWallActive(false);
-                                    floor.rooms[i, j].walls[3].SetWallActive(false);
+                                    SetWallInactive(floor, i, j, 1, 3);
                                 }
                             }
                         }
                     }
                 }
-            } else if (building.rows == 1 && building.columns > 1) {
+            } else if (!building.hasInsideWalls && building.rows == 1 && building.columns > 1) {
                 for (int j = 0; j < building.columns; j++) {
                     if (j < building.columns - 1) {
-                        floor.rooms[0, j].walls[2].SetWallActive(false);
+                        SetWallInactive(floor, 0, j, 2);
                         if (j > 0) {
-                            floor.rooms[0, j].walls[2].SetWallActive(false);
-                            floor.rooms[0, j].walls[3].SetWallActive(false);
+                            SetWallInactive(floor, 0, j, 3);
                         }
                     }
                     if (j == building.columns - 1) {
-                        floor.rooms[0, j].walls[3].SetWallActive(false);
+                        SetWallInactive(floor, 0, j, 3);
                     }
-
                 }
-            } else if (building.rows > 1 && building.columns == 1) {
+            } else if (!building.hasInsideWalls && building.rows > 1 && building.columns == 1) {
                 for (int i = 0; i < building.rows; i++) {
                     if (i < building.rows - 1) {
-                        floor.rooms[i, 0].walls[0].SetWallActive(false);
+                        SetWallInactive(floor, i, 0, 0);
                         if (i > 0) {
-                            floor.rooms[i, 0].walls[0].SetWallActive(false);
-                            floor.rooms[i, 0].walls[1].SetWallActive(false);
+                            SetWallInactive(floor, i, 0, 1);
                         }
                     }
                     if (i == building.rows - 1) {
-                        floor.rooms[i, 0].walls[1].SetWallActive(false);
+                        SetWallInactive(floor, i, 0, 1);
                     }
                 }
             }
-        } 
+        }
+    }
+
+    void SetWallInactive(Floor floor, int i, int j, int index01, int index02 = -1, int index03 = -1, int index04 = -1) {
+        Queue<int> queue = new Queue<int>();
+        queue.Enqueue(index01);
+        queue.Enqueue(index02);
+        queue.Enqueue(index03);
+        queue.Enqueue(index04);
+        for (int h = 0; h < 4; h++) {
+            ChoseWall(floor, i, j, queue.Dequeue());
+        }
+    }
+
+    void ChoseWall(Floor floor, int i, int j, int index) {
+        switch (index) {
+            case -1:
+                break;
+            case 0:
+                floor.rooms[i, j].walls[0].SetWallActive(false);
+                break;
+            case 1:
+                floor.rooms[i, j].walls[1].SetWallActive(false);
+                break;
+            case 2:
+                floor.rooms[i, j].walls[2].SetWallActive(false);
+                break;
+            case 3:
+                floor.rooms[i, j].walls[3].SetWallActive(false);
+                break;
+        }
     }
 }
