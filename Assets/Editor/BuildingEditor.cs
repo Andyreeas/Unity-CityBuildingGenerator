@@ -16,7 +16,7 @@ public class BuildingEditor : Editor {
             building.GenerateBuilding();
         }
         if (GUILayout.Button("Generate randomized building")) {
-            building.generateRandomizedBuilding();
+            building.GenerateRandomizedBuilding();
         }
     }
 }
